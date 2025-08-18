@@ -13,11 +13,7 @@ const int pinoMoedeiro = 2;
 const int tempoLimiteSemPulsos = 500;
 volatile int contadorPulsos = 0;
 long tempoUltimoPulso = 0;
-const int buzzerPin = 12;
-const int led1 = 32;
-const int led2 = 34;
-const int led3 = 36;
-const int led4 = 38;
+
 
 // --- Configuração do Teclado 4x3 ---
 const byte ROWS = 4;
@@ -56,11 +52,6 @@ void setup() {
   lcd.backlight();
   travaCofre.attach(pinoServo);
   travaCofre.write(90);
-  pinMode(buzzerPin, OUTPUT);
-  pinMode(led1, OUTPUT);
-  pinMode(led2, OUTPUT);
-  pinMode(led3, OUTPUT);
-  pinMode(led4, OUTPUT);
 
   EEPROM.get(0, config);
 
@@ -286,12 +277,10 @@ void realizarSaque() {
   destravarCofre();
   travaPendenteDeFechamento = true; 
   
-  tone(buzzerPin, 1000);
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Retire o valor.");
   delay(4000);
-  noTone(buzzerPin);
 
   config.valorTotal = 0;
   
@@ -315,24 +304,4 @@ void resetTotalDoCofre() {
 void contaPulso() {
   contadorPulsos++;
   tempoUltimoPulso = millis();
-}
-
-void ledMeta(){
-  float porcentoled = 0.25;
-  if (config.modoCofre == 1){
-    digitalWrite(led1, LOW);
-    digitalWrite(led2, LOW);
-    digitalWrite(led3, LOW);
-    digitalWrite(led4, LOW);
-
-    if (config.valorTotal >= config.valorMeta * porcentoled)      digitalWrite(led1, HIGH);
-    if (config.valorTotal >= config.valorMeta * (porcentoled * 2)) digitalWrite(led2, HIGH);
-    if (config.valorTotal >= config.valorMeta * (porcentoled * 3)) digitalWrite(led3, HIGH);
-    if (config.valorTotal >= config.valorMeta)                    digitalWrite(led4, HIGH);
-  } else {
-    digitalWrite(led1, LOW);
-    digitalWrite(led2, LOW);
-    digitalWrite(led3, LOW);
-    digitalWrite(led4, LOW);
-  }
 }
