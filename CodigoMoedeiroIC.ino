@@ -1,6 +1,3 @@
-// --- COFRE DIGITAL v5.8 com Lógica de Trava Condicional ---
-// Professor: Arduino
-
 // --- Bibliotecas ---
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
