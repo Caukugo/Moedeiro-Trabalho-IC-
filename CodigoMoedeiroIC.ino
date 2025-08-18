@@ -1,3 +1,6 @@
+// --- COFRE DIGITAL v5.8 com Lógica de Trava Condicional ---
+// Professor: Arduino
+
 // --- Bibliotecas ---
 #include <Wire.h>
 #include <LiquidCrystal_I2C.h>
@@ -47,6 +50,7 @@ String bufferComando = "";
 String codigoReset = "000#";
 String codigoReconfig = "*#*";
 String codigoSaque = "1#";
+bool travaPendenteDeFechamento = false; // A BANDEIRA DE ESTADO DA TRAVA
 
 // --- Funções ---
 
@@ -56,6 +60,10 @@ void setup() {
   travaCofre.attach(pinoServo);
   travaCofre.write(90);
   pinMode(buzzerPin, OUTPUT);
+  pinMode(led1, OUTPUT);
+  pinMode(led2, OUTPUT);
+  pinMode(led3, OUTPUT);
+  pinMode(led4, OUTPUT);
 
   EEPROM.get(0, config);
 
@@ -76,15 +84,13 @@ void setup() {
 }
 
 void loop() {
-  // PRIMEIRO, verifica se há uma contagem de moeda em andamento
   if (contadorPulsos > 0) {
     if (millis() - tempoUltimoPulso > tempoLimiteSemPulsos) {
       identificaMoeda();
-      contadorPulsos = 0; // Finaliza e zera a contagem
+      contadorPulsos = 0;
     }
   } 
   else {
-  
     char key = customKeypad.getKey();
     if (key) {
       bufferComando += key;
@@ -139,8 +145,18 @@ void iniciarConfiguracao() {
   }
 
   config.magic_number = 123;
-  config.metaAtingida = false; // Garante que toda nova configuração comece com a meta não atingida
+  config.metaAtingida = false;
   EEPROM.put(0, config);
+  
+  // Condicional para travar o cofre
+  if (travaPendenteDeFechamento) {
+    lcd.clear();
+    lcd.setCursor(0, 0);
+    lcd.print("Travando cofre...");
+    travarCofre();
+    travaPendenteDeFechamento = false; 
+    delay(1000);
+  }
   
   lcd.clear();
   lcd.setCursor(0, 0);
@@ -208,6 +224,7 @@ void telaDeDefinirMeta() {
   config.valorMeta = (metaReais * 100) + metaCentavos;
 }
 
+
 // --- Funções Principais de Operação ---
 
 void identificaMoeda() {
@@ -223,28 +240,23 @@ void identificaMoeda() {
     config.valorTotal += valorMoeda;
 
     if (config.modoCofre == 1 && config.valorTotal >= config.valorMeta && !config.metaAtingida) {
-      config.metaAtingida = true; // Marca que a meta foi atingida
-      
+      config.metaAtingida = true;
       lcd.clear();
       lcd.setCursor(0, 0);
       lcd.print("META ATINGIDA!");
       lcd.setCursor(0, 1);
       lcd.print("Parabens!");
-      delay (1000);
-      lcd.clear();
-      lcd.print("1# para sacar");
-      delay(3000); // Mostra a mensagem de celebração por 3 segundos
+      delay(3000);
     }
     
     EEPROM.put(0, config);
     ledMeta();
-    atualizarDisplay(); // Volta a mostrar o display normal
+    atualizarDisplay();
   }
 }
 
 void atualizarDisplay() {
   lcd.clear();
-  // Se estiver no modo com meta E a meta ainda não foi atingida, mostra o progresso
   if (config.modoCofre == 1 && !config.metaAtingida) {
     lcd.setCursor(0, 0);
     lcd.print("R$");
@@ -253,7 +265,6 @@ void atualizarDisplay() {
     lcd.print("Meta: R$");
     lcd.print(config.valorMeta / 100.0, 2);
   } else {
-    // Para o modo SEM META ou para o modo COM META JÁ ATINGIDA, mostra só o total
     lcd.setCursor(0, 0);
     lcd.print("Total no Cofre:");
     lcd.setCursor(0, 1);
@@ -266,7 +277,9 @@ void destravarCofre() {
   travaCofre.write(0);
   delay(500);
   travaCofre.write(90);
-  delay(3000);
+}
+
+void travarCofre() {
   travaCofre.write(180);
   delay(500);
   travaCofre.write(90);
@@ -274,16 +287,17 @@ void destravarCofre() {
 
 void realizarSaque() {
   destravarCofre();
+  travaPendenteDeFechamento = true; 
   
   tone(buzzerPin, 1000);
   lcd.clear();
   lcd.setCursor(0,0);
   lcd.print("Retire o valor.");
-  delay(2000);
+  delay(4000);
   noTone(buzzerPin);
 
   config.valorTotal = 0;
-  // A meta atingida e o modo são resetados na função de configuração
+  
   iniciarConfiguracao();
 }
 
@@ -301,24 +315,27 @@ void resetTotalDoCofre() {
   reinicio();
 }
 
-
 void contaPulso() {
   contadorPulsos++;
   tempoUltimoPulso = millis();
 }
 
 void ledMeta(){
-  float porcentoled = 0.125;
+  float porcentoled = 0.25;
   if (config.modoCofre == 1){
-    if (config.valorTotal >= config.valorMeta * (porcentoled * 4)){
-      digitalWrite (led4, HIGH);
-    } else if (config.valorTotal >= config.valorMeta * (porcentoled * 3)){
-      digitalWrite (led3, HIGH);
-    } else if (config.valorTotal >= config.valorMeta * (porcentoled * 2)){
-      digitalWrite (led2, HIGH);
-    } else if (config.valorTotal >= config.valorMeta * porcentoled){
-      digitalWrite (led1, HIGH);
-    }
+    digitalWrite(led1, LOW);
+    digitalWrite(led2, LOW);
+    digitalWrite(led3, LOW);
+    digitalWrite(led4, LOW);
+
+    if (config.valorTotal >= config.valorMeta * porcentoled)      digitalWrite(led1, HIGH);
+    if (config.valorTotal >= config.valorMeta * (porcentoled * 2)) digitalWrite(led2, HIGH);
+    if (config.valorTotal >= config.valorMeta * (porcentoled * 3)) digitalWrite(led3, HIGH);
+    if (config.valorTotal >= config.valorMeta)                    digitalWrite(led4, HIGH);
+  } else {
+    digitalWrite(led1, LOW);
+    digitalWrite(led2, LOW);
+    digitalWrite(led3, LOW);
+    digitalWrite(led4, LOW);
   }
-  
 }
